@@ -12,7 +12,7 @@ from algorithms.ssd_heuristic import run_heuristic_ssdscan
 from algorithms.cdbscan import CDBSCAN
 from utils.utils import create_seeds_dict_with_indices
 
-# --- Custom Legend Handler for Colormaps (Robust Version) ---
+# --- Custom Legend Handler for Colormaps ---
 class HandlerColormap(HandlerBase):
     """Custom legend handler to display a colormap swatch."""
     def __init__(self, cmap, num_stripes=10, **kw):
@@ -73,12 +73,12 @@ def plot_climb_diagnostic(climb_instance, X_original, title, save_path, show_noi
 
     # --- 3. Formatting and Custom Legend ---
     plt.title(title, fontsize=18)
-    plt.xlabel('Lz', fontsize=14)
-    plt.ylabel('Energy', fontsize=14)
+    plt.xlabel('Lz (10³ kpc km/s)', fontsize=14)
+    plt.ylabel('E (10⁵ km/s)', fontsize=14)
     plt.grid(True, linestyle='--', alpha=0.5)
 
     handles = [Rectangle((0, 0), 1, 1), Rectangle((0, 0), 1, 1)]
-    labels = ['Constrained Clusters (Viridis Cmap)', 'Discovered Clusters (Autumn Cmap)']
+    labels = ['Constrained Clusters (cool colors)', 'Discovered Clusters (warm colors)']
     handler_map = {handles[0]: HandlerColormap(plt.cm.viridis), handles[1]: HandlerColormap(plt.cm.autumn)}
 
     if show_noise:
@@ -90,15 +90,18 @@ def plot_climb_diagnostic(climb_instance, X_original, title, save_path, show_noi
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
 
 
-def plot_comparison_panel(X_original, ground_truth_labels, mask_all_meaningful_gt, all_labels, save_path, show_noise=True):
+def plot_comparison_panel(X_original, ground_truth_labels, mask_known_substructures, mask_all_meaningful_gt, all_labels, save_path, show_noise=True):
     """
     Generates a 2x2 comparison panel.
-
-    Args:
-        ...
-        show_noise (bool, optional): If True, plots noise points. Defaults to True.
+    - Top-Left: Ground Truth displaying ONLY the KNOWN substructures (Phase 1 target).
+    - Others: Algorithm results compared against ALL meaningful structures.
     """
     print(f"\n--- Generating Comparison Panel Plot ---")
+    
+    # Safety Check: Ensure mask is boolean and has correct shape
+    if mask_known_substructures.shape[0] != X_original.shape[0]:
+        raise ValueError(f"Mask shape {mask_known_substructures.shape} does not match Data shape {X_original.shape}")
+
     fig, axes = plt.subplots(2, 2, figsize=(20, 18), sharex=True, sharey=True)
     fig.suptitle('Comparison of Found Clusters', fontsize=22)
     
@@ -106,25 +109,30 @@ def plot_comparison_panel(X_original, ground_truth_labels, mask_all_meaningful_g
 
     # --- 1. Plot Ground Truth (subplot 0,0) ---
     ax_gt = axes[0, 0]
-    gt_noise_mask = (ground_truth_labels == 0)
     
     if show_noise:
-        ax_gt.scatter(X_original[gt_noise_mask, 0], X_original[gt_noise_mask, 1], c='gray', s=10, alpha=0.3)
+        mask_background = ~mask_known_substructures
+        ax_gt.scatter(X_original[mask_background, 0], X_original[mask_background, 1], 
+                      c='gray', s=10, alpha=0.2, label='Background/Unknown')
     
-    ax_gt.scatter(X_original[mask_all_meaningful_gt, 0], X_original[mask_all_meaningful_gt, 1],
-                  c=ground_truth_labels[mask_all_meaningful_gt], cmap='viridis', s=20, ec='black', lw=0.2)
-    ax_gt.set_title('Ground Truth', fontsize=16)
-    ax_gt.set_ylabel('Energy', fontsize=14)
+    # Only known clusters
+    # ! We use mask_known_substructures to filter X and labels
+    ax_gt.scatter(X_original[mask_known_substructures, 0], X_original[mask_known_substructures, 1],
+                  c=ground_truth_labels[mask_known_substructures], cmap='viridis', s=20, ec='black', lw=0.2)
+    
+    ax_gt.set_title('Ground Truth (Known Substructures Only)', fontsize=16)
+    ax_gt.set_ylabel('E (10⁵ km/s)', fontsize=14)
 
     # --- 2. Plot Algorithm Results ---
     ax_flat = [axes[0, 1], axes[1, 0], axes[1, 1]]
-    if len(all_labels) > 3:
-        all_labels = dict(list(all_labels.items())[:3])
+    
+    items = list(all_labels.items())
+    if len(items) > 3: 
+        items = items[:3]
 
-    for i, (name, labels) in enumerate(all_labels.items()):
-        if i >= len(ax_flat): break
-        
+    for i, (name, labels) in enumerate(items):
         ax = ax_flat[i]
+        
         clustered_mask = (labels != -1)
         noise_mask = ~clustered_mask
         
@@ -132,14 +140,14 @@ def plot_comparison_panel(X_original, ground_truth_labels, mask_all_meaningful_g
         title = f'{name} - ARI: {ari:.3f}'
         
         if show_noise:
-            ax.scatter(X_original[noise_mask, 0], X_original[noise_mask, 1], c='gray', s=10, alpha=0.3)
+            ax.scatter(X_original[noise_mask, 0], X_original[noise_mask, 1], c='gray', s=10, alpha=0.2)
         
         ax.scatter(X_original[clustered_mask, 0], X_original[clustered_mask, 1],
                    c=labels[clustered_mask], cmap='viridis', s=20, ec='black', lw=0.2)
         
         ax.set_title(title, fontsize=16)
-        ax.set_xlabel('Lz', fontsize=14)
-        if i == 1: ax.set_ylabel('Energy', fontsize=14)
+        ax.set_xlabel('Lz (10³ kpc km/s)', fontsize=14)
+        if i == 1: ax.set_ylabel('E (10⁵ km/s)', fontsize=14)
             
     # --- 3. Final Formatting ---
     for ax_row in axes:
@@ -148,6 +156,8 @@ def plot_comparison_panel(X_original, ground_truth_labels, mask_all_meaningful_g
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.savefig(save_path, dpi=300)
+    plt.close()
+    print(f"Comparison panel saved to {save_path}")
 
 
 def plot_performance_vs_seeds(X, ground_truth_labels, mask_all_meaningful_gt, rrl_dataset, scaler, optimal_params, known_labels, save_dir):
@@ -226,7 +236,7 @@ def plot_performance_vs_seeds(X, ground_truth_labels, mask_all_meaningful_gt, rr
     # SSDBSCAN is constant, plot as a dashed line
     plt.axhline(y=ari_scores["SSDBSCAN"][0], color='r', linestyle='--', label="SSDBSCAN (Constant)")
     
-    plt.title("ARI Score vs. Seed Percentage", fontsize=16)
+    plt.title("Sensitivity analysis", fontsize=16)
     plt.xlabel("Seed Percentage (%)", fontsize=12)
     plt.ylabel("Adjusted Rand Index (ARI)", fontsize=12)
     plt.xticks(seed_percentages)
