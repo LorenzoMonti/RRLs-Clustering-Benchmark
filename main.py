@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # Data Loading
     rrl_dataset, _ = read_csv_dataset(data_path)
     centroids_dataset = read_csv_centroids(clusters_path)
-    dataset = select_features(rrl_dataset, [2, 1, 3])  # Lz, Energy, FeH
+    dataset = select_features(rrl_dataset, [2, 1, 3])  # Lz, Energy, Lperp
     ground_truth_labels = np.asarray(select_features(rrl_dataset, [4])).flatten()
     
     # Preprocessing
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     seeds_for_climb = {tuple(info['centroid_coords_scaled']): [tuple(c) for c in info['seed_coords_scaled']] for _, info in seeds_info.items()}
     must_link = [list(itertools.combinations(info['seed_indices'], 2)) for info in seeds_info.values()]
     must_link = [item for sublist in must_link for item in sublist] # Flatten list
-    
+
     indices_list = [v['seed_indices'] for v in seeds_info.values()]
     cannot_link = []
     for i in range(len(indices_list)):
