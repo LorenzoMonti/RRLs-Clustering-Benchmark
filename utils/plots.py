@@ -30,13 +30,12 @@ class HandlerColormap(HandlerBase):
                                edgecolor='none', transform=trans)
             stripes.append(stripe)
         
-        # Cornice nera attorno al gradiente
+        # black corner frame around the gradient for better visibility
         frame = Rectangle([xdescent, ydescent], width, height,
                           facecolor='none', edgecolor='black', lw=0.5, transform=trans)
         stripes.append(frame)
 
-        # AGGIUNTA: Disegna il marker sopra il gradiente per chiarezza
-        # Posizionato al centro dello swatch
+        # Positioned at the center of the swatch
         marker_obj = Line2D([xdescent + width/2], [ydescent + height/2], 
                             marker=self.marker, color='w', markeredgecolor='black',
                             markersize=fontsize, transform=trans)
@@ -48,13 +47,6 @@ class HandlerColormap(HandlerBase):
 def plot_climb_diagnostic(climb_instance, X_original, title, save_path, show_noise=True):
     """
     Creates a high-quality diagnostic plot for CLiMB results.
-
-    Args:
-        climb_instance: The fitted CLiMB object.
-        X_original (np.ndarray): The original UNSCALED dataset.
-        title (str): The title of the plot.
-        save_path (str): The path to save the image.
-        show_noise (bool, optional): If True, plots noise points. Defaults to True.
     """
     print(f"\n--- Generating CLiMB Diagnostic Plot: {title} ---")
     plt.figure(figsize=(14, 10))
@@ -74,17 +66,19 @@ def plot_climb_diagnostic(climb_instance, X_original, title, save_path, show_noi
     # --- 2. Plot layers ---
     if show_noise and len(final_noise_indices) > 0:
         plt.scatter(X_original[final_noise_indices, 0], X_original[final_noise_indices, 1],
-                    c='gray', s=10, alpha=0.3, marker='o', label='Noise')
+                    c='gray', s=15, alpha=0.3, marker='o', label='Noise')
     
+    # cmap='tab20' (qualitative) and s=60 (bigger marker size for better visibility)
     if len(constrained_indices) > 0:
         plt.scatter(X_original[constrained_indices, 0], X_original[constrained_indices, 1],
-                    c=constrained_labels, cmap='viridis', 
-                    s=25, marker='o', ec='black', lw=0.3)
+                    c=constrained_labels, cmap='tab20', 
+                    s=60, marker='o', ec='black', lw=0.3)
 
+    # cmap='Set1' (qualitative) and s=120 (bigger marker size for better visibility)
     if len(discovered_indices) > 0:
         plt.scatter(X_original[discovered_indices, 0], X_original[discovered_indices, 1],
-                    c=discovered_labels, cmap='autumn', 
-                    s=50, marker='X', ec='black', lw=0.5)
+                    c=discovered_labels, cmap='Set1', 
+                    s=120, marker='X', ec='black', lw=0.5)
 
     # --- 3. Formatting and Custom Legend ---
     plt.title(title, fontsize=20)
@@ -93,9 +87,9 @@ def plot_climb_diagnostic(climb_instance, X_original, title, save_path, show_noi
     plt.grid(True, linestyle='--', alpha=0.5)
 
     handles = [Rectangle((0, 0), 1, 1), Rectangle((0, 0), 1, 1)]
-    labels = ['Constrained Clusters (cool colors)', 'Discovered Clusters (warm colors)']
-    handler_map = {handles[0]: HandlerColormap(plt.cm.viridis, marker='o'), 
-                   handles[1]: HandlerColormap(plt.cm.autumn, marker='X')
+    labels = ['Constrained Clusters (Phase 1)', 'Discovered Clusters (Phase 2)']
+    handler_map = {handles[0]: HandlerColormap(plt.cm.tab20, marker='o'), 
+                   handles[1]: HandlerColormap(plt.cm.Set1, marker='X')
     }
 
     if show_noise:
@@ -110,12 +104,9 @@ def plot_climb_diagnostic(climb_instance, X_original, title, save_path, show_noi
 def plot_comparison_panel(X_original, ground_truth_labels, mask_known_substructures, mask_all_meaningful_gt, all_labels, save_path, show_noise=True):
     """
     Generates a 2x2 comparison panel.
-    - Top-Left: Ground Truth displaying ONLY the KNOWN substructures (Phase 1 target).
-    - Others: Algorithm results compared against ALL meaningful structures.
     """
     print(f"\n--- Generating Comparison Panel Plot ---")
     
-    # Safety Check: Ensure mask is boolean and has correct shape
     if mask_known_substructures.shape[0] != X_original.shape[0]:
         raise ValueError(f"Mask shape {mask_known_substructures.shape} does not match Data shape {X_original.shape}")
 
@@ -129,12 +120,11 @@ def plot_comparison_panel(X_original, ground_truth_labels, mask_known_substructu
     if show_noise:
         mask_background = ~mask_known_substructures
         ax_gt.scatter(X_original[mask_background, 0], X_original[mask_background, 1], 
-                      c='gray', s=10, alpha=0.2, label='Background/Unknown')
+                      c='gray', s=15, alpha=0.2, label='Background/Unknown')
     
-    # Only known clusters
-    # ! We use mask_known_substructures to filter X and labels
+    # cmap='tab20' (qualitative)
     ax_gt.scatter(X_original[mask_known_substructures, 0], X_original[mask_known_substructures, 1],
-                  c=ground_truth_labels[mask_known_substructures], cmap='viridis', s=20, ec='black', lw=0.2)
+                  c=ground_truth_labels[mask_known_substructures], cmap='tab20', s=30, ec='black', lw=0.2)
     
     ax_gt.set_title('Ground Truth (Known Substructures Only)', fontsize=20)
     ax_gt.set_xlabel('Lz (10³ kpc km/s)', fontsize=18)
@@ -157,10 +147,11 @@ def plot_comparison_panel(X_original, ground_truth_labels, mask_known_substructu
         title = f'{name} - ARI: {ari:.3f}'
         
         if show_noise:
-            ax.scatter(X_original[noise_mask, 0], X_original[noise_mask, 1], c='gray', s=10, alpha=0.2)
+            ax.scatter(X_original[noise_mask, 0], X_original[noise_mask, 1], c='gray', s=15, alpha=0.2)
         
+        # cmap='tab20' (qualitative)
         ax.scatter(X_original[clustered_mask, 0], X_original[clustered_mask, 1],
-                   c=labels[clustered_mask], cmap='viridis', s=20, ec='black', lw=0.2)
+                   c=labels[clustered_mask], cmap='tab20', s=30, ec='black', lw=0.2)
         
         ax.set_title(title, fontsize=20)
         ax.set_xlabel('Lz (10³ kpc km/s)', fontsize=18)
