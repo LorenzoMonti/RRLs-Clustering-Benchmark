@@ -1,7 +1,8 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import adjusted_rand_score, homogeneity_score, completeness_score
+from sklearn.metrics import adjusted_rand_score, homogeneity_score, completeness_score, precision_score, recall_score
 import itertools
 
 # Import refactored modules
@@ -102,6 +103,28 @@ if __name__ == '__main__':
     comp_p1 = completeness_score(true_labels_known, pred_labels_climb_p1)
     print(f"  ARI: {ari_p1:.4f} | Homogeneity: {homog_p1:.4f} | Completeness: {comp_p1:.4f}")
     
+    print("\n--- Per-Cluster Metrics (Precision & Recall) per CLiMB Phase 1 ---")    
+    # Finding unique labels of the ground truth (8 Dodd's clusters)
+    unique_true_labels = np.unique(true_labels_known)
+    
+    for true_lbl in unique_true_labels:
+        # Finding which predicted label overlaps the most with this true cluster
+        mask_true = (true_labels_known == true_lbl)
+        if np.sum(mask_true) == 0: continue
+        
+        # Most frequent predicted label for this true class
+        pred_lbls_for_this_class = pred_labels_climb_p1[mask_true]
+        best_pred_lbl = pd.Series(pred_lbls_for_this_class).mode()[0]
+        
+        # Precision and Recall for this match
+        y_true_binary = (true_labels_known == true_lbl)
+        y_pred_binary = (pred_labels_climb_p1 == best_pred_lbl)
+        
+        precision = precision_score(y_true_binary, y_pred_binary, zero_division=0)
+        recall = recall_score(y_true_binary, y_pred_binary, zero_division=0)
+        
+        print(f"Cluster GT ID {true_lbl}: Precision (Purity) = {precision:.3f}, Recall (Completeness) = {recall:.3f}")
+
     # Analysis for other algorithms
     other_algos = {"SSDBSCAN": heuristic_ssdscan_labels, "C-DBSCAN": cdbscan.labels_}
     for name, labels in other_algos.items():
