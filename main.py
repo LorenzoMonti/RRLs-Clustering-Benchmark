@@ -166,6 +166,7 @@ if __name__ == '__main__':
     print("\n--- Running Random Seeding Baseline ---")
     # Initialize CLiMB with k=8 and without seed_points (seed_points=None, random K-bound seeding)
     np.random.seed(1234)  # For reproducibility
+    
     climb_random = CLiMB(
         constrained_clusters=8, 
         seed_points=None, 
@@ -179,7 +180,6 @@ if __name__ == '__main__':
     ari_random = adjusted_rand_score(true_labels_known, pred_labels_random)
     print(f"CLiMB with Random Seeding - ARI: {ari_random:.4f}")
 
-    exit()
     # --- [PHASE 4] PLOTTING ---
     print("\n\n--- [PHASE 4] Generating Plots ---")
     X_original = scaler.inverse_transform(X)
