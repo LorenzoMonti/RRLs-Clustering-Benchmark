@@ -161,6 +161,25 @@ if __name__ == '__main__':
         ari = adjusted_rand_score(true_labels_meaningful, labels[mask_all_meaningful_gt])
         print(f"  Global ARI for {name}: {ari:.4f}")
 
+
+    # --- RANDOM SEEDING ---
+    print("\n--- Running Random Seeding Baseline ---")
+    # Initialize CLiMB with k=8 and without seed_points (seed_points=None, random K-bound seeding)
+    np.random.seed(1234)  # For reproducibility
+    climb_random = CLiMB(
+        constrained_clusters=8, 
+        seed_points=None, 
+        **optimal_params['climb']['phase1'],
+        distance_metric="mahalanobis", metric_params={'VI': np.linalg.inv(np.cov(X.T))},
+        exploratory_algorithm=DBSCANExploratory(**optimal_params['climb']['phase2'])
+    )
+    climb_random.fit(X, None, is_slight_movement=False)
+    
+    pred_labels_random = climb_random.constrained_labels[mask_known_points]
+    ari_random = adjusted_rand_score(true_labels_known, pred_labels_random)
+    print(f"CLiMB with Random Seeding - ARI: {ari_random:.4f}")
+
+    exit()
     # --- [PHASE 4] PLOTTING ---
     print("\n\n--- [PHASE 4] Generating Plots ---")
     X_original = scaler.inverse_transform(X)
